@@ -185,6 +185,119 @@ class CinemaDatabase:
         
         return df
 
+    def listar_filmes_por_nota(self):
+        """Desafio 1: Listar filmes ordenados por nota (decrescente)"""
+        print("Listando filmes ordenados por nota (decrescente)...")
+        
+        if hasattr(self, 'modo_simulado'):
+            filmes_ordenados = sorted(self.filmes, key=lambda x: x['nota'], reverse=True)
+        else:
+            filmes_ordenados = list(self.filmes.find({}, {"titulo": 1, "nota": 1, "ano": 1, "_id": 0}).sort("nota", -1))
+        
+        print("Ranking de filmes por nota:")
+        for i, filme in enumerate(filmes_ordenados, 1):
+            print(f"   {i}º {filme['titulo']} ({filme['ano']}) - {filme['nota']}/10")
+        
+        return filmes_ordenados
+    
+    def buscar_filmes_apos_2015(self):
+        """Desafio 2: Buscar filmes lançados após 2015"""
+        print("Buscando filmes lançados após 2015...")
+        
+        if hasattr(self, 'modo_simulado'):
+            filmes_recentes = [f for f in self.filmes if f['ano'] > 2015]
+        else:
+            filmes_recentes = list(self.filmes.find(
+                {"ano": {"$gt": 2015}},
+                {"titulo": 1, "ano": 1, "nota": 1, "_id": 0}
+            ))
+        
+        print(f"Encontrados {len(filmes_recentes)} filmes após 2015:")
+        for filme in filmes_recentes:
+            print(f"   {filme['titulo']} ({filme['ano']}) - {filme['nota']}/10")
+        
+        return filmes_recentes
+    
+    def adicionar_campo_assistido(self):
+        """Desafio 3: Adicionar o campo 'assistido: False' em todos"""
+        print("Adicionando campo 'assistido: False' em todos os filmes...")
+        
+        if hasattr(self, 'modo_simulado'):
+            for filme in self.filmes:
+                filme['assistido'] = False
+            count = len(self.filmes)
+        else:
+            result = self.filmes.update_many(
+                {},  # Todos os documentos
+                {"$set": {"assistido": False}}
+            )
+            count = result.modified_count
+        
+        print(f"{count} filmes atualizados com campo 'assistido: False'")
+        return count
+    
+    def deletar_filme_menor_nota(self):
+        """Desafio 4: Deletar o filme com menor nota"""
+        print("Identificando e deletando filme com menor nota...")
+        
+        if hasattr(self, 'modo_simulado'):
+            if not self.filmes:
+                print("Nenhum filme encontrado para deletar")
+                return None
+            
+            filme_menor_nota = min(self.filmes, key=lambda x: x['nota'])
+            self.filmes = [f for f in self.filmes if f['titulo'] != filme_menor_nota['titulo']]
+        else:
+            # Encontrar filme com menor nota
+            filme_menor_nota = list(self.filmes.find().sort("nota", 1).limit(1))
+            
+            if not filme_menor_nota:
+                print("Nenhum filme encontrado para deletar")
+                return None
+            
+            filme_menor_nota = filme_menor_nota[0]
+            
+            # Deletar o filme
+            result = self.filmes.delete_one({"_id": filme_menor_nota["_id"]})
+            
+            if result.deleted_count == 0:
+                print("Erro ao deletar filme")
+                return None
+        
+        print(f"Filme deletado: {filme_menor_nota['titulo']} (nota: {filme_menor_nota['nota']})")
+        return filme_menor_nota
+    
+    def executar_desafios_extra(self):
+        """Executar todos os desafios extra em sequência"""
+        print("\n" + "="*60)
+        print("EXECUTANDO DESAFIOS EXTRA")
+        print("="*60)
+        
+        # Desafio 1
+        print("\n[DESAFIO 1] Listar filmes por nota")
+        self.listar_filmes_por_nota()
+        
+        # Desafio 2  
+        print("\n" + "-"*40)
+        print("[DESAFIO 2] Filmes após 2015")
+        self.buscar_filmes_apos_2015()
+        
+        # Desafio 3
+        print("\n" + "-"*40) 
+        print("[DESAFIO 3] Adicionar campo assistido")
+        self.adicionar_campo_assistido()
+        
+        # Desafio 4
+        print("\n" + "-"*40)
+        print("[DESAFIO 4] Deletar filme com menor nota")
+        filme_deletado = self.deletar_filme_menor_nota()
+        
+        print("\n" + "="*60)
+        print("TODOS OS DESAFIOS CONCLUÍDOS!")
+        print("="*60)
+        
+        return filme_deletado
+
 def executar_analise_completa():
     print("INICIANDO ANÁLISE COMPLETA DO CINEMA")
     print("="*60)
@@ -205,7 +318,11 @@ def executar_analise_completa():
     db.estatisticas_por_genero()
     print("\n" + "="*60)
     
-    df = db.export_para_pandas()
+    db.export_para_pandas()
+    
+    # Executar desafios extra
+    print("\n" + "="*60)
+    db.executar_desafios_extra()
     
     return df
 
